@@ -224,8 +224,22 @@ body {
 
 .row {
     display: flex;
+    flex-direction: column;
     justify-content: center;
+    align-items: center;
+    gap: 10px;
     margin-top: 10px;
+}
+
+.btn-sound {
+    background-color: #2b2b2b;
+    color: #fff;
+    font-size: 14px;
+    padding: 8px 14px;
+}
+
+.btn-sound:disabled {
+    opacity: 0.6;
 }
 
 .dice-value {
@@ -457,6 +471,8 @@ body {
     background: transparent;
     pointer-events: none;
     transform: scale(1);
+    opacity: 1;
+    transition: opacity 120ms ease-in-out;
     filter: none;
 }
 
@@ -499,10 +515,6 @@ body {
     animation: lk-dice-pop 650ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.dice-overlays .player-dice.dice-rolling .dice-face {
-    animation: lk-dice-shake 0.09s ease-in-out infinite;
-}
-
 @keyframes lk-dice-shake {
     0% {
         transform: translateX(0) scale(1.06);
@@ -526,13 +538,16 @@ body {
         transform: translateY(0) scale(1);
     }
     15% {
-        transform: translateY(-10px) scale(1.14);
+        transform: translateY(-25px) scale(1.14);
     }
-    70% {
-        transform: translateY(-6px) scale(1.08);
+    55% {
+        transform: translateY(-8px) scale(1.08);
+    }
+    78% {
+        transform: translateY(5px) scale(1);
     }
     92% {
-        transform: translateY(-1px) scale(1.02);
+        transform: translateY(2px) scale(0.98);
     }
     100% {
         transform: translateY(0) scale(1);
@@ -793,6 +808,11 @@ body {
 .player-dice:not(:disabled):hover {
     transform: scale(1.1);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.dice-overlays .player-dice:not(:disabled):hover {
+    transform: none;
+    box-shadow: none;
 }
 
 .dice-value[player-id] {

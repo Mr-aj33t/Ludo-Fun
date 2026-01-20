@@ -1,11 +1,13 @@
 import { BASE_POSITIONS, HOME_ENTRANCE, HOME_POSITIONS, PLAYERS, SAFE_POSITIONS, START_POSITIONS, STATE, TURNING_POINTS } from './constants.js';
 import { UI } from './UI.js';
+import { Sound } from './Sound.js';
 
 const MOVE_STEP_MS = 260;
 const TURN_DICE_TRANSFER_DELAY_MS = 850;
 
 export class Ludo {
     _turnSwitchTimer = null;
+    _lastMoveSoundAtMs = 0;
 
     currentPositions = {
         P1: [],
@@ -112,6 +114,9 @@ export class Ludo {
             return;
         }
 
+        Sound.unlock();
+        Sound.play('dice');
+
         // Increment roll count for current player
         this.diceRollCount[playerId]++;
 
@@ -147,6 +152,17 @@ export class Ludo {
 
             this.checkForEligiblePieces();
         });
+    }
+
+    playLandingSound(player, piece, kill = false) {
+        const pos = this.currentPositions[player][piece];
+        if (pos === HOME_POSITIONS[player]) {
+            Sound.play('home');
+            return;
+        }
+        if (!kill && SAFE_POSITIONS.includes(pos)) {
+            Sound.play('safe');
+        }
     }
 
     checkForEligiblePieces() {
@@ -459,6 +475,7 @@ export class Ludo {
 
             // Handle turn logic immediately without setTimeout
             const kill = this.checkForKill(player, piece);
+            this.playLandingSound(player, piece, kill);
             if (!kill && this.diceValue !== 6) {
                 this.incrementTurn();
             } else {
@@ -468,6 +485,10 @@ export class Ludo {
             // For normal movement, wait for animation to complete
             setTimeout(() => {
                 const kill = this.checkForKill(player, piece);
+
+                if (direction !== 'backward') {
+                    this.playLandingSound(player, piece, kill);
+                }
 
                 // If no kill and dice value is not 6, change turn
                 if (!kill && this.diceValue !== 6) {
@@ -481,6 +502,14 @@ export class Ludo {
 
         UI.unhighlightPieces();
         UI.hideMovementArrows();
+    }
+
+    playMoveTickSound() {
+        const now = Date.now();
+        // Prevent rapid overlapping sound when multiple things update quickly
+        if (now - this._lastMoveSoundAtMs < 80) return;
+        this._lastMoveSoundAtMs = now;
+        Sound.play('move');
     }
 
     setPiecePosition(player, piece, newPosition) {
@@ -521,6 +550,7 @@ export class Ludo {
 
         const interval = setInterval(() => {
             this.decrementPiecePosition(player, piece);
+            this.playMoveTickSound();
             moveBy--;
             console.log(`Backward step completed, remaining: ${moveBy}`);
 
@@ -537,6 +567,8 @@ export class Ludo {
 
                 const isKill = this.checkForKill(player, piece);
                 console.log(`Backward movement kill check: ${isKill}`);
+
+                this.playLandingSound(player, piece, isKill);
 
                 if (isKill || this.diceValue === 6) {
                     this.state = STATE.DICE_NOT_ROLLED;
@@ -560,6 +592,7 @@ export class Ludo {
         // Normal step-by-step movement
         const interval = setInterval(() => {
             this.incrementPiecePosition(player, piece);
+            this.playMoveTickSound();
             moveBy--;
 
             if (moveBy === 0) {
@@ -571,6 +604,7 @@ export class Ludo {
     checkForKill(player, piece) {
         const currentPosition = this.currentPositions[player][piece];
         let kill = false;
+        let playedCutSound = false;
 
         // Check against all other players
         PLAYERS.forEach(opponent => {
@@ -584,6 +618,10 @@ export class Ludo {
                     console.log(`${player} killed ${opponent} at position ${currentPosition}`);
                     this.setPiecePosition(opponent, opponentPiece, BASE_POSITIONS[opponent][opponentPiece]);
                     kill = true;
+                    if (!playedCutSound) {
+                        Sound.play('cut');
+                        playedCutSound = true;
+                    }
                 }
 
                 // Special home path cutting rules
@@ -592,6 +630,10 @@ export class Ludo {
                     // Send opponent token to opposite side (left side of their home area)
                     this.setPiecePosition(opponent, opponentPiece, BASE_POSITIONS[opponent][opponentPiece]);
                     kill = true;
+                    if (!playedCutSound) {
+                        Sound.play('cut');
+                        playedCutSound = true;
+                    }
                 }
             });
         });

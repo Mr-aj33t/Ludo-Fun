@@ -72,7 +72,26 @@ export class UI {
         const face = (value === null || value === undefined || value === '' || Number.isNaN(Number(value))) ?
             1 :
             Number(value);
-        img.src = `${DICE_FACE_PATH}/${face}.png`;
+
+        const newSrc = `${DICE_FACE_PATH}/${face}.png`;
+        if (img.getAttribute('src') === newSrc) return;
+
+        const token = String(Date.now() + Math.random());
+        img.dataset.fadeToken = token;
+        img.style.opacity = '0';
+
+        img.onload = () => {
+            if (img.dataset.fadeToken !== token) return;
+            img.style.opacity = '1';
+        };
+
+        img.src = newSrc;
+
+        // Fallback in case load event is not fired due to caching
+        setTimeout(() => {
+            if (img.dataset.fadeToken !== token) return;
+            img.style.opacity = '1';
+        }, 140);
     }
 
     static setActiveDiceDisplay(playerId) {
@@ -123,13 +142,13 @@ export class UI {
         // During animation, avoid showing 0-face (keep it 1..6)
         const randomFace = () => (Math.floor(Math.random() * 6) + 1);
 
-        // Sum of delays = 600ms
-        const delays = [60, 60, 60, 70, 70, 80, 90, 110];
+        // Limit random face changes (max 3 times total including the immediate first face)
+        const delays = [80, 80, 100, 120];
 
         return new Promise(resolve => {
             let elapsed = 0;
 
-            // Immediate first face so it feels responsive
+            // 1) Immediate first face so it feels responsive
             this.setDiceFace(playerId, randomFace());
 
             delays.forEach((delay) => {
@@ -140,10 +159,11 @@ export class UI {
                 this._diceRollTimersByPlayer[playerId].push(timer);
             });
 
+            // 2) Lock to final face shortly after the last random change
             const lockTimer = setTimeout(() => {
                 this.setDiceFace(playerId, finalValue);
                 this.setSideValueText(playerId, finalValue);
-            }, 600);
+            }, elapsed + 120);
             this._diceRollTimersByPlayer[playerId].push(lockTimer);
 
             const settleTimer = setTimeout(() => {
