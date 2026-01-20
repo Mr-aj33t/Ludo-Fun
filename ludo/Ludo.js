@@ -2,7 +2,7 @@ import { BASE_POSITIONS, HOME_ENTRANCE, HOME_POSITIONS, PLAYERS, SAFE_POSITIONS,
 import { UI } from './UI.js';
 
 const MOVE_STEP_MS = 260;
-const TURN_DICE_TRANSFER_DELAY_MS = 600;
+const TURN_DICE_TRANSFER_DELAY_MS = 850;
 
 export class Ludo {
     _turnSwitchTimer = null;
