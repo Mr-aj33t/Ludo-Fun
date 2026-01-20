@@ -23,6 +23,8 @@ body {
 .ludo-container {
     --board-size: max(260px, min(94vmin, calc(100dvh - 170px), 450px));
     --base-border: calc(var(--board-size) * 0.066);
+    --label-gap: 8px;
+    --active-arrow-overlap: clamp(10px, calc(var(--board-size) * 0.035), 18px);
     width: var(--board-size);
     margin: 0;
     transform: translateY(clamp(10px, 3vh, 24px));
@@ -137,19 +139,23 @@ body {
     background: transparent;
     box-shadow: none;
     color: #ffffff;
-    font-size: 16px;
+    font-size: clamp(12px, 2.2vmin, 16px);
     font-weight: 900;
+    line-height: 1;
+    white-space: nowrap;
     letter-spacing: 0.3px;
     text-transform: none;
     font-family: "Times New Roman", Times, serif;
     -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.9);
     text-shadow: 0 0px 0 rgba(0, 0, 0, 0.35), 0 0 6px rgba(0, 0, 0, 0.35);
+    z-index: 1601;
     pointer-events: none;
 }
 
 .player-bases [player-id="P3"].player-base::after,
 .player-bases [player-id="P4"].player-base::after {
-    bottom: 125px;
+    bottom: auto;
+    top: calc(100% + var(--label-gap));
 }
 
 .player-bases [player-id="P1"].player-base {
@@ -161,6 +167,8 @@ body {
 
 .player-bases [player-id="P1"].player-base::after {
     content: "Player 1";
+    --p3-label-color: #000000;
+    color: var(--p3-label-color);
 }
 
 .player-bases [player-id="P2"].player-base {
@@ -172,6 +180,16 @@ body {
 
 .player-bases [player-id="P2"].player-base::after {
     content: "Player 4";
+    --p2-label-color: #000000;
+    color: var(--p2-label-color);
+    --p2-label-x: 0px;
+    --p2-label-y: 0px;
+    --p2-label-rotate: 90deg;
+    bottom: auto;
+    left: calc(100% - var(--label-gap) + var(--p2-label-x));
+    top: calc(50% + var(--p2-label-y));
+    transform: translateY(-50%) rotate(var(--p2-label-rotate));
+    transform-origin: center;
 }
 
 .player-bases [player-id="P3"].player-base {
@@ -183,6 +201,14 @@ body {
 
 .player-bases [player-id="P3"].player-base::after {
     content: "Player 3";
+    transform: translateX(-50%) rotate(180deg);
+    transform-origin: center;
+    --p3-label-color: #000000;
+    color: var(--p3-label-color);
+    --p3-label-x: 0px;
+    --p3-label-y: calc(var(--board-size) * -0.33);
+    left: calc(50% + var(--p3-label-x));
+    top: calc(100% + var(--label-gap) + var(--p3-label-y));
 }
 
 .player-bases [player-id="P4"].player-base {
@@ -194,6 +220,16 @@ body {
 
 .player-bases [player-id="P4"].player-base::after {
     content: "Player 2";
+    color: #000000;
+    font-weight: 900;
+    -webkit-text-stroke: 0.6px rgba(0, 0, 0, 0.95);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45), 0 0 8px rgba(0, 0, 0, 0.35);
+    transform: translateX(-50%) rotate(-90deg);
+    transform-origin: center;
+    --p4-label-x: calc(var(--board-size) * -0.17);
+    --p4-label-y: calc(var(--board-size) * -0.17);
+    left: calc(50% + var(--p4-label-x));
+    top: calc(100% + var(--label-gap) + var(--p4-label-y));
 }
 
 .player-base.highlight {
@@ -309,17 +345,20 @@ body {
 }
 
 .dice-overlays .player-dice-section[player-id="P4"] {
-    top: -30%;
-    left: 0%;
+    top: clamp(-100px, 1.2vmin, -100px);
+    left: clamp(0px, 1.2vmin, 0px);
+    transform: rotate(var(--p4-rotate, 0deg));
+    transform-origin: center;
     width: clamp(140px, 18vw, 180px);
-    height: clamp(105px, 13.5vw, 135px);
+    height: clamp(80px, 13.5vw, 100px);
 }
 
 .dice-overlays .player-dice-section[player-id="P3"] {
-    top: -28%;
-    right: 0%;
+    top: clamp(-100px, 1.2vmin, -100px);
+    right: clamp(0px, 1.2vmin, 0px);
+    transform: none;
     width: clamp(140px, 18vw, 180px);
-    height: clamp(105px, 13.5vw, 100px);
+    height: clamp(80px, 13.5vw, 100px);
 }
 
 .dice-overlays .player-dice-section[player-id="P1"] {
@@ -366,7 +405,7 @@ body {
     background-position: center;
     --dice-window-left: 18px;
     --dice-window-right: -60px;
-    --dice-window-top: 20px;
+    --dice-window-top: 15px;
     --dice-window-bottom: 30px;
 }
 
@@ -390,8 +429,8 @@ body {
 .dice-overlays .player-dice-section[player-id="P1"] {
     background-image: url('./assets/Dice-Box/blue-dice.png');
     --dice-window-left: 18px;
-    --dice-window-right: -80px;
-    --dice-window-top: 20px;
+    --dice-window-right: -60px;
+    --dice-window-top: 15px;
     --dice-window-bottom: 30px;
 }
 
@@ -399,15 +438,15 @@ body {
     background-image: url('./assets/Dice-Box/red-dice.png');
     --dice-window-left: 18px;
     --dice-window-right: -60px;
-    --dice-window-top: 30px;
-    --dice-window-bottom: 20px;
+    --dice-window-top: 15px;
+    --dice-window-bottom: 30px;
 }
 
 .dice-overlays .player-dice-section[player-id="P3"] {
     background-image: url('./assets/Dice-Box/green-dice.png');
     --dice-window-left: 18px;
-    --dice-window-right: -80px;
-    --dice-window-top: 20px;
+    --dice-window-right: -60px;
+    --dice-window-top: 15px;
     --dice-window-bottom: 30px;
 }
 
@@ -720,7 +759,7 @@ body {
     top: 35px;
     width: 52px;
     height: 32px;
-    right: 6px;
+    right: calc(100% - var(--active-arrow-overlap));
     --active-arrow-rotate: 0deg;
     transform: rotate(var(--active-arrow-rotate));
     background: linear-gradient(180deg, rgba(255, 236, 160, 1) 0%, rgba(255, 190, 64, 1) 55%, rgba(235, 140, 20, 1) 100%);
@@ -732,14 +771,14 @@ body {
 
 .dice-overlays .player-dice-section.active[player-id="P2"]::after,
 .dice-overlays .player-dice-section.active[player-id="P3"]::after {
-    right: 165px;
+    right: calc(100% - var(--active-arrow-overlap));
 }
 
 .dice-overlays .player-dice-section.active[player-id="P1"]::after,
 .dice-overlays .player-dice-section.active[player-id="P4"]::after {
     --active-arrow-rotate: 180deg;
     right: auto;
-    left: 165px;
+    left: calc(100% - var(--active-arrow-overlap));
 }
 
 @keyframes dice-active-arrow {
