@@ -232,14 +232,33 @@ body {
 }
 
 .btn-sound {
-    background-color: #2b2b2b;
-    color: #fff;
-    font-size: 14px;
-    padding: 8px 14px;
+    background-color: transparent;
+    padding: 0;
 }
 
 .btn-sound:disabled {
     opacity: 0.6;
+}
+
+.btn-reset {
+    background-color: transparent;
+    padding: 0;
+}
+
+.btn-reset,
+.btn-sound {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-icon {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+    display: block;
 }
 
 .dice-value {

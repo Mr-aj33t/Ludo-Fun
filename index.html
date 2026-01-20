@@ -76,8 +76,12 @@
 
         <div class="footer">
             <div class="row">
-                <button id="reset-btn" class="btn btn-reset">Reset</button>
-                <button id="sound-btn" class="btn btn-sound" type="button">Sound: ON</button>
+                <button id="reset-btn" class="btn btn-reset" type="button" aria-label="Reset">
+                    <img class="btn-icon" src="./ludo/assets/button/reset.png" alt="Reset">
+                </button>
+                <button id="sound-btn" class="btn btn-sound" type="button" aria-label="Sound">
+                    <img id="sound-icon" class="btn-icon" src="./ludo/assets/button/sound-on.png" alt="Sound On">
+                </button>
             </div>
             <h2 class="active-player">Active Player: <span></span> </h2>
         </div>
