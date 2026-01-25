@@ -3,6 +3,14 @@ import { Sound } from './ludo/Sound.js';
 
 const ludo = new Ludo();
 
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {
+            // Ignore SW registration errors (e.g. unsupported environment)
+        });
+    });
+}
+
 // Make ludo instance globally available for UI callbacks
 window.ludo = ludo;
 
