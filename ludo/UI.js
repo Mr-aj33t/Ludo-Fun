@@ -29,6 +29,18 @@ export class UI {
         return document.querySelector(`.player-dice[player-id="${playerId}"]`);
     }
 
+    static setActiveDiceSection(playerId) {
+        document.querySelectorAll('.player-dice-section').forEach(section => {
+            section.classList.remove('active');
+        });
+
+        if (!playerId) return;
+        const section = this.getDiceSection(playerId);
+        if (section) {
+            section.classList.add('active');
+        }
+    }
+
     static ensureDiceFaceImage(playerId) {
         const btn = this.getDiceButton(playerId);
         if (!btn) return null;
@@ -192,6 +204,29 @@ export class UI {
         });
     }
 
+    static listenBotToggleClick(callback) {
+        document.addEventListener('click', (event) => {
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+
+            const btn = target.classList.contains('bot-toggle') ?
+                target :
+                target.closest('.bot-toggle');
+
+            if (!btn) return;
+
+            const playerId = btn.getAttribute('player-id');
+            callback(playerId);
+        });
+    }
+
+    static setBotToggleState(playerId, isBot) {
+        const btn = document.querySelector(`.bot-toggle[player-id="${playerId}"]`);
+        if (!btn) return;
+        btn.classList.toggle('is-active', Boolean(isBot));
+        btn.setAttribute('aria-pressed', Boolean(isBot) ? 'true' : 'false');
+    }
+
     static listenResetClick(callback) {
         document.querySelector('button#reset-btn').addEventListener('click', callback)
     }
@@ -353,8 +388,9 @@ export class UI {
         // Disable all dice first
         document.querySelectorAll('.player-dice').forEach(diceBtn => {
             diceBtn.disabled = true;
-            diceBtn.parentElement.classList.remove('active');
         });
+
+        this.setActiveDiceSection(playerId);
 
         // Enable only current player's dice
         const currentPlayerDice = document.querySelector(`.player-dice[player-id="${playerId}"]`);

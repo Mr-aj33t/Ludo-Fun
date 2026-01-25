@@ -8,6 +8,7 @@ const TURN_DICE_TRANSFER_DELAY_MS = 850;
 export class Ludo {
     _turnSwitchTimer = null;
     _lastMoveSoundAtMs = 0;
+    _botTimer = null;
 
     currentPositions = {
         P1: [],
@@ -48,7 +49,13 @@ export class Ludo {
 
         if (value === STATE.DICE_NOT_ROLLED) {
             const currentPlayer = PLAYERS[this.turn];
-            UI.enableDice(currentPlayer);
+            if (this.isBotPlayer(currentPlayer)) {
+                UI.setActiveDiceSection(currentPlayer);
+                UI.disableAllDice();
+                this.scheduleBotTurn();
+            } else {
+                UI.enableDice(currentPlayer);
+            }
             UI.unhighlightPieces();
         } else {
             UI.disableAllDice();
@@ -61,6 +68,13 @@ export class Ludo {
         P2: 0,
         P3: 0,
         P4: 0
+    }
+
+    botPlayers = {
+        P1: false,
+        P2: false,
+        P3: false,
+        P4: false
     }
 
     constructor() {
@@ -85,6 +99,7 @@ export class Ludo {
         console.log('Initializing game...');
         this.listenPieceClick();
         this.listenDiceClick();
+        this.listenBotToggleClick();
         this.listenResetClick();
 
         this.resetGame();
@@ -92,15 +107,75 @@ export class Ludo {
         // Enable dice for first player (P1)
         const currentPlayer = PLAYERS[this.turn];
         UI.setTurn(currentPlayer);
-        UI.enableDice(currentPlayer);
+        if (this.isBotPlayer(currentPlayer)) {
+            UI.setActiveDiceSection(currentPlayer);
+            UI.disableAllDice();
+            this.scheduleBotTurn();
+        } else {
+            UI.enableDice(currentPlayer);
+        }
+
+        PLAYERS.forEach(pid => UI.setBotToggleState(pid, this.isBotPlayer(pid)));
+    }
+
+    listenBotToggleClick() {
+        UI.listenBotToggleClick(this.onBotToggleClick.bind(this));
+    }
+
+    isBotPlayer(playerId) {
+        return Boolean(this.botPlayers[playerId]);
+    }
+
+    setBotPlayer(playerId, isBot) {
+        this.botPlayers[playerId] = Boolean(isBot);
+        UI.setBotToggleState(playerId, this.botPlayers[playerId]);
+
+        const currentPlayer = PLAYERS[this.turn];
+        if (playerId === currentPlayer && this.state === STATE.DICE_NOT_ROLLED) {
+            if (this.isBotPlayer(currentPlayer)) {
+                UI.setActiveDiceSection(currentPlayer);
+                UI.disableAllDice();
+                this.scheduleBotTurn();
+            } else {
+                UI.enableDice(currentPlayer);
+            }
+        }
+    }
+
+    onBotToggleClick(playerId) {
+        if (!playerId) return;
+        this.setBotPlayer(playerId, !this.isBotPlayer(playerId));
+    }
+
+    scheduleBotTurn() {
+        if (this._botTimer) {
+            clearTimeout(this._botTimer);
+            this._botTimer = null;
+        }
+
+        const currentPlayer = PLAYERS[this.turn];
+        if (!this.isBotPlayer(currentPlayer)) return;
+        if (this.state !== STATE.DICE_NOT_ROLLED) return;
+
+        this._botTimer = setTimeout(() => {
+            this._botTimer = null;
+            const cp = PLAYERS[this.turn];
+            if (!this.isBotPlayer(cp)) return;
+            if (this.state !== STATE.DICE_NOT_ROLLED) return;
+            this.onDiceClick(cp, { bot: true });
+        }, 450);
     }
 
     listenDiceClick() {
         UI.listenDiceClick(this.onDiceClick.bind(this))
     }
 
-    onDiceClick(playerId) {
+    onDiceClick(playerId, options = {}) {
         console.log('dice clicked!', playerId);
+
+        if (this.isBotPlayer(playerId) && !options.bot) {
+            return;
+        }
 
         // Only allow current player to roll dice
         if (playerId !== PLAYERS[this.turn]) {
@@ -189,7 +264,43 @@ export class Ludo {
             // Update current player highlighting for overlapping pieces
             UI.updateCurrentPlayerHighlight(player);
 
-            this.tryAutoMoveSingleOpenPiece(player, eligiblePieces, backwardPieces);
+            if (!this.isBotPlayer(player)) {
+                this.tryAutoMoveSingleOpenPiece(player, eligiblePieces, backwardPieces);
+            }
+
+            if (this.isBotPlayer(player)) {
+                setTimeout(() => {
+                    if (!this.isBotPlayer(player)) return;
+                    if (player !== PLAYERS[this.turn]) return;
+                    if (this.state !== STATE.DICE_ROLLED) return;
+
+                    if (backwardPieces.length) {
+                        this.executeMovement(player, backwardPieces[0], 'backward');
+                        return;
+                    }
+
+                    if (!eligiblePieces.length) {
+                        this.incrementTurn();
+                        return;
+                    }
+
+                    if (this.diceValue === 6) {
+                        const openPiece = eligiblePieces.find(piece => BASE_POSITIONS[player].includes(this.currentPositions[player][piece]));
+                        if (openPiece !== undefined) {
+                            this.executeMovement(player, openPiece, 'forward');
+                            return;
+                        }
+
+                        const killingPiece = eligiblePieces.find(piece => this.willBotForwardMoveCutOpponent(player, piece));
+                        if (killingPiece !== undefined) {
+                            this.executeMovement(player, killingPiece, 'forward');
+                            return;
+                        }
+                    }
+
+                    this.executeMovement(player, eligiblePieces[0], 'forward');
+                }, 500);
+            }
         } else {
             console.log(`No eligible pieces for ${player} - incrementing turn`);
             this.incrementTurn();
@@ -367,6 +478,24 @@ export class Ludo {
     resetGame() {
         console.log('Resetting game...');
 
+        if (this._botTimer) {
+            clearTimeout(this._botTimer);
+            this._botTimer = null;
+        }
+
+        if (this._turnSwitchTimer) {
+            clearTimeout(this._turnSwitchTimer);
+            this._turnSwitchTimer = null;
+        }
+
+        PLAYERS.forEach(pid => {
+            UI.cancelDiceAnimation(pid);
+        });
+
+        PLAYERS.forEach(pid => {
+            this.botPlayers[pid] = false;
+        });
+
         this.currentPositions = {
             P1: [500, 501, 502, 503],
             P2: [600, 601, 602, 603],
@@ -378,6 +507,13 @@ export class Ludo {
         this.turn = 0;
         this.state = STATE.DICE_NOT_ROLLED;
         this.lastRollWasSix = false;
+
+        this.diceRollCount = {
+            P1: 0,
+            P2: 0,
+            P3: 0,
+            P4: 0
+        }
 
         PLAYERS.forEach(player => {
             [0, 1, 2, 3].forEach(piece => {
@@ -394,8 +530,16 @@ export class Ludo {
 
         const currentPlayer = PLAYERS[this.turn];
         UI.setTurn(currentPlayer);
-        UI.enableDice(currentPlayer);
+        if (this.isBotPlayer(currentPlayer)) {
+            UI.setActiveDiceSection(currentPlayer);
+            UI.disableAllDice();
+            this.scheduleBotTurn();
+        } else {
+            UI.enableDice(currentPlayer);
+        }
         UI.unhighlightPieces();
+
+        PLAYERS.forEach(pid => UI.setBotToggleState(pid, this.isBotPlayer(pid)));
     }
 
     listenPieceClick() {
@@ -415,6 +559,10 @@ export class Ludo {
 
         const player = target.getAttribute('player-id');
         const piece = parseInt(target.getAttribute('piece'));
+
+        if (this.isBotPlayer(player)) {
+            return;
+        }
 
         // Only allow current player to move their own pieces
         if (player !== PLAYERS[this.turn]) {
@@ -466,8 +614,6 @@ export class Ludo {
             this.movePieceAnimated(player, piece, this.diceValue);
         }
 
-        this.state = STATE.DICE_NOT_ROLLED;
-
         // For base opening (direct movement), handle turn logic immediately
         if (BASE_POSITIONS[player].includes(currentPosition) && this.diceValue === 6) {
             // Update position immediately for base opening
@@ -502,6 +648,64 @@ export class Ludo {
 
         UI.unhighlightPieces();
         UI.hideMovementArrows();
+    }
+
+    getBotForwardLandingPosition(player, piece) {
+        if (!this.isEligiblePiece(player, piece)) return null;
+        const currentPosition = this.currentPositions[player][piece];
+
+        if (BASE_POSITIONS[player].includes(currentPosition) && this.diceValue === 6) {
+            return START_POSITIONS[player];
+        }
+
+        let position = currentPosition;
+        for (let i = 0; i < this.diceValue; i++) {
+            position = this.getIncrementedPositionForMove(position, player);
+        }
+        return position;
+    }
+
+    willBotForwardMoveCutOpponent(player, piece) {
+        const landingPosition = this.getBotForwardLandingPosition(player, piece);
+        if (landingPosition === null) return false;
+
+        for (let opponent of PLAYERS) {
+            if (opponent === player) continue;
+            for (let opponentPiece = 0; opponentPiece < 4; opponentPiece++) {
+                const opponentPos = this.currentPositions[opponent][opponentPiece];
+                if (BASE_POSITIONS[opponent].includes(opponentPos) || opponentPos === HOME_POSITIONS[opponent]) {
+                    continue;
+                }
+
+                if (landingPosition === opponentPos && !SAFE_POSITIONS.includes(landingPosition)) {
+                    return true;
+                }
+
+                if (this.willBotCutInHomePathAtPosition(player, landingPosition, opponent, opponentPiece)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    willBotCutInHomePathAtPosition(player, playerPosition, opponent, opponentPiece) {
+        const opponentPosition = this.currentPositions[opponent][opponentPiece];
+
+        if (!HOME_ENTRANCE[opponent].includes(opponentPosition)) {
+            return false;
+        }
+
+        const playerIndex = PLAYERS.indexOf(player);
+        const opponentIndex = PLAYERS.indexOf(opponent);
+        const nextPlayerIndex = (opponentIndex + 1) % 4;
+        if (playerIndex !== nextPlayerIndex) {
+            return false;
+        }
+
+        const rightSidePosition = this.getRightSideApproachPosition(opponent);
+        return playerPosition === rightSidePosition;
     }
 
     playMoveTickSound() {
