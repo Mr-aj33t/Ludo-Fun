@@ -10,6 +10,19 @@ export class Ludo {
     _lastMoveSoundAtMs = 0;
     _botTimer = null;
 
+    finishedPlayers = {
+        P1: false,
+        P2: false,
+        P3: false,
+        P4: false
+    }
+
+    finishOrder = []
+
+    winner = null
+
+    gameEnded = false
+
     currentPositions = {
         P1: [],
         P2: [],
@@ -49,6 +62,12 @@ export class Ludo {
 
         if (value === STATE.DICE_NOT_ROLLED) {
             const currentPlayer = PLAYERS[this.turn];
+
+            if (!this.gameEnded && this.isPlayerFinished(currentPlayer)) {
+                this.incrementTurn();
+                return;
+            }
+
             if (this.isBotPlayer(currentPlayer)) {
                 UI.setActiveDiceSection(currentPlayer);
                 UI.disableAllDice();
@@ -64,6 +83,13 @@ export class Ludo {
 
     // Track dice roll count for each player
     diceRollCount = {
+        P1: 0,
+        P2: 0,
+        P3: 0,
+        P4: 0
+    }
+
+    consecutiveSixCount = {
         P1: 0,
         P2: 0,
         P3: 0,
@@ -91,6 +117,20 @@ export class Ludo {
         this.turn = 0;
         this.state = STATE.DICE_NOT_ROLLED;
         this.lastRollWasSix = false;
+
+        this.diceRollCount = {
+            P1: 0,
+            P2: 0,
+            P3: 0,
+            P4: 0
+        }
+
+        this.consecutiveSixCount = {
+            P1: 0,
+            P2: 0,
+            P3: 0,
+            P4: 0
+        }
 
         this.init();
     }
@@ -154,6 +194,8 @@ export class Ludo {
         }
 
         const currentPlayer = PLAYERS[this.turn];
+        if (this.gameEnded) return;
+        if (this.isPlayerFinished(currentPlayer)) return;
         if (!this.isBotPlayer(currentPlayer)) return;
         if (this.state !== STATE.DICE_NOT_ROLLED) return;
 
@@ -173,7 +215,11 @@ export class Ludo {
     onDiceClick(playerId, options = {}) {
         console.log('dice clicked!', playerId);
 
-        if (this.isBotPlayer(playerId) && !options.bot) {
+        if (this.gameEnded) {
+            return;
+        }
+
+        if (this.isPlayerFinished(playerId)) {
             return;
         }
 
@@ -200,17 +246,24 @@ export class Ludo {
         if (this.diceRollCount[playerId] >= 7 && !this.hasOpenTokens(playerId)) {
             // Force a 6 if player has rolled 7+ times without getting 6 and has no open tokens
             finalDiceValue = 6;
-            this.diceRollCount[playerId] = 0; // Reset counter
             console.log('Forced 6 for player:', playerId);
         } else {
             // Normal random roll (0-6)
             const randomValue = Math.random();
             finalDiceValue = Math.floor(randomValue * 7);
+        }
 
-            // Reset counter if got 6 naturally
-            if (finalDiceValue === 6) {
-                this.diceRollCount[playerId] = 0;
-            }
+        // Limit: max 2 consecutive sixes for the same player
+        if (finalDiceValue === 6 && this.consecutiveSixCount[playerId] >= 2) {
+            finalDiceValue = Math.floor(Math.random() * 5) + 1; // force 1-5
+        }
+
+        // Update consecutive six streak
+        if (finalDiceValue === 6) {
+            this.consecutiveSixCount[playerId]++;
+            this.diceRollCount[playerId] = 0;
+        } else {
+            this.consecutiveSixCount[playerId] = 0;
         }
 
         // Disable dice buttons while animating
@@ -329,6 +382,12 @@ export class Ludo {
     }
 
     incrementTurn() {
+        if (this.gameEnded) return;
+
+        // Turn is switching away from current player; reset their consecutive-six streak
+        const currentPlayer = PLAYERS[this.turn];
+        this.consecutiveSixCount[currentPlayer] = 0;
+
         // Brief pause so the current player can see the rolled value before it transfers
         if (this._turnSwitchTimer) {
             clearTimeout(this._turnSwitchTimer);
@@ -338,12 +397,81 @@ export class Ludo {
         // Lock dice during the handover delay (prevents extra clicks)
         this.state = STATE.DICE_ROLLED;
 
-        const nextTurn = (this.turn + 1) % 4; // Cycle through 0, 1, 2, 3 for 4 players
+        const nextTurn = this.getNextActiveTurnIndex(this.turn);
         this._turnSwitchTimer = setTimeout(() => {
+            if (this.gameEnded) return;
+            if (nextTurn === null) {
+                this.endGame();
+                return;
+            }
+
             this.turn = nextTurn;
             this.state = STATE.DICE_NOT_ROLLED;
             this.lastRollWasSix = false;
         }, TURN_DICE_TRANSFER_DELAY_MS);
+    }
+
+    getNextActiveTurnIndex(fromTurnIndex) {
+        for (let i = 1; i <= 4; i++) {
+            const idx = (fromTurnIndex + i) % 4;
+            const pid = PLAYERS[idx];
+            if (!this.isPlayerFinished(pid)) return idx;
+        }
+        return null;
+    }
+
+    isPlayerFinished(player) {
+        return [0, 1, 2, 3].every(piece => this.currentPositions[player][piece] === HOME_POSITIONS[player]);
+    }
+
+    onPlayerFinished(player) {
+        if (this.finishedPlayers[player]) return;
+
+        this.finishedPlayers[player] = true;
+        this.finishOrder.push(player);
+
+        const isWinner = this.finishOrder.length === 1;
+        if (isWinner) {
+            this.winner = player;
+            UI.setWinner(player);
+        }
+
+        UI.markPlayerFinished(player, isWinner);
+
+        const finishedCount = this.finishOrder.length;
+        if (finishedCount >= 3) {
+            this.endGame();
+        }
+    }
+
+    endGame() {
+        if (this.gameEnded) return;
+        this.gameEnded = true;
+
+        if (this._botTimer) {
+            clearTimeout(this._botTimer);
+            this._botTimer = null;
+        }
+
+        if (this._turnSwitchTimer) {
+            clearTimeout(this._turnSwitchTimer);
+            this._turnSwitchTimer = null;
+        }
+
+        UI.disableAllDice();
+        UI.unhighlightPieces();
+        UI.hideMovementArrows();
+
+        UI.setGameStatus('GAME OVER');
+
+        const remaining = PLAYERS.filter(pid => !this.finishedPlayers[pid]);
+        if (remaining.length === 1) {
+            UI.markPlayerLost(remaining[0]);
+        }
+
+        if (this.winner) {
+            UI.setGameOver(this.winner);
+        }
     }
 
     getEligiblePieces(player) {
@@ -496,6 +624,17 @@ export class Ludo {
             this.botPlayers[pid] = false;
         });
 
+        this.finishedPlayers = {
+            P1: false,
+            P2: false,
+            P3: false,
+            P4: false
+        };
+        this.finishOrder = [];
+        this.winner = null;
+        this.gameEnded = false;
+        UI.clearFinishBadges();
+
         this.currentPositions = {
             P1: [500, 501, 502, 503],
             P2: [600, 601, 602, 603],
@@ -503,12 +642,19 @@ export class Ludo {
             P4: [800, 801, 802, 803],
         }
 
-        this.diceValue = undefined;
+        this.diceValue;
         this.turn = 0;
         this.state = STATE.DICE_NOT_ROLLED;
         this.lastRollWasSix = false;
 
         this.diceRollCount = {
+            P1: 0,
+            P2: 0,
+            P3: 0,
+            P4: 0
+        }
+
+        this.consecutiveSixCount = {
             P1: 0,
             P2: 0,
             P3: 0,
@@ -549,6 +695,10 @@ export class Ludo {
     onPieceClick(event) {
         const target = event.target;
 
+        if (this.gameEnded) {
+            return;
+        }
+
         console.log('Piece click event received:', event);
         console.log('Movement direction:', event.movementDirection);
 
@@ -560,7 +710,7 @@ export class Ludo {
         const player = target.getAttribute('player-id');
         const piece = parseInt(target.getAttribute('piece'));
 
-        if (this.isBotPlayer(player)) {
+        if (this.isPlayerFinished(player)) {
             return;
         }
 
@@ -619,25 +769,36 @@ export class Ludo {
             // Update position immediately for base opening
             this.currentPositions[player][piece] = START_POSITIONS[player];
 
-            // Handle turn logic immediately without setTimeout
             const kill = this.checkForKill(player, piece);
             this.playLandingSound(player, piece, kill);
-            if (!kill && this.diceValue !== 6) {
-                this.incrementTurn();
-            } else {
+
+            if (this.isPlayerFinished(player)) {
+                this.onPlayerFinished(player);
+                if (!this.gameEnded) this.incrementTurn();
+                return;
+            }
+
+            if (this.diceValue === 6 || (kill && !isBackwardMove)) {
                 this.state = STATE.DICE_NOT_ROLLED;
+            } else {
+                this.incrementTurn();
             }
         } else {
             // For normal movement, wait for animation to complete
             setTimeout(() => {
                 const kill = this.checkForKill(player, piece);
 
-                if (direction !== 'backward') {
-                    this.playLandingSound(player, piece, kill);
+                this.playLandingSound(player, piece, kill);
+
+                if (this.isPlayerFinished(player)) {
+                    this.onPlayerFinished(player);
+                    if (!this.gameEnded) this.incrementTurn();
+                    return;
                 }
 
                 // If no kill and dice value is not 6, change turn
-                if (!kill && this.diceValue !== 6) {
+                const extraTurn = (this.diceValue === 6) || (kill && !isBackwardMove);
+                if (!extraTurn) {
                     this.incrementTurn();
                 } else {
                     // Same player continues - enable their dice again
@@ -722,29 +883,12 @@ export class Ludo {
     }
 
     movePiece(player, piece, moveBy) {
-        // this.setPiecePosition(player, piece, this.currentPositions[player][piece] + moveBy)
         const interval = setInterval(() => {
             this.incrementPiecePosition(player, piece);
             moveBy--;
 
             if (moveBy === 0) {
                 clearInterval(interval);
-
-                // check if player won
-                if (this.hasPlayerWon(player)) {
-                    alert(`Player: ${player} has won!`);
-                    this.resetGame();
-                    return;
-                }
-
-                const isKill = this.checkForKill(player, piece);
-
-                if (isKill || this.diceValue === 6) {
-                    this.state = STATE.DICE_NOT_ROLLED;
-                    return;
-                }
-
-                this.incrementTurn();
             }
         }, MOVE_STEP_MS);
     }
@@ -754,6 +898,7 @@ export class Ludo {
 
         const interval = setInterval(() => {
             this.decrementPiecePosition(player, piece);
+
             this.playMoveTickSound();
             moveBy--;
             console.log(`Backward step completed, remaining: ${moveBy}`);
@@ -761,25 +906,6 @@ export class Ludo {
             if (moveBy === 0) {
                 clearInterval(interval);
                 console.log(`Backward movement completed for ${player} piece ${piece}`);
-
-                // check if player won
-                if (this.hasPlayerWon(player)) {
-                    alert(`Player: ${player} has won!`);
-                    this.resetGame();
-                    return;
-                }
-
-                const isKill = this.checkForKill(player, piece);
-                console.log(`Backward movement kill check: ${isKill}`);
-
-                this.playLandingSound(player, piece, isKill);
-
-                if (isKill || this.diceValue === 6) {
-                    this.state = STATE.DICE_NOT_ROLLED;
-                    return;
-                }
-
-                this.incrementTurn();
             }
         }, MOVE_STEP_MS);
     }

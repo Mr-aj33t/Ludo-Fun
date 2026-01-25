@@ -44,6 +44,17 @@
             width: var(--board-size);
         }
         
+        .game-status {
+            margin: 10px 0 0;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: 0.6px;
+            color: #ffffff;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.65);
+            user-select: none;
+        }
+        
         .player-pieces {
             height: 100%;
             width: 100%;
@@ -563,6 +574,32 @@
             text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
             pointer-events: none;
             user-select: none;
+        }
+        
+        .dice-overlays .player-dice-section .finish-badge {
+            position: absolute;
+            top: 6px;
+            right: 8px;
+            z-index: 3;
+            padding: 2px 6px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 0.4px;
+            background: rgba(0, 0, 0, 0.75);
+            color: #ffffff;
+            pointer-events: none;
+            user-select: none;
+        }
+        
+        .dice-overlays .player-dice-section.winner .finish-badge {
+            background: rgba(255, 195, 38, 0.95);
+            color: #000000;
+        }
+        
+        .dice-overlays .player-dice-section.lost .finish-badge {
+            background: rgba(255, 64, 64, 0.95);
+            color: #ffffff;
         }
         
         .dice-overlays .player-dice-section[player-id="P3"] {
@@ -1343,4 +1380,34 @@
         
         .arrow-btn.backward:hover {
             background: rgba(150, 0, 0, 1);
+        }
+        
+        @media (max-width: 760px) {
+            body {
+                align-items: flex-start;
+                overflow-y: auto;
+            }
+            .ludo-container {
+                --board-size: max(240px, min(94vmin, calc(100dvh - 220px), 420px));
+                transform: translateY(0);
+            }
+            .dice-overlays .player-dice-section[player-id="P3"],
+            .dice-overlays .player-dice-section[player-id="P4"] {
+                top: 0;
+            }
+            .dice-overlays .player-dice-section[player-id="P1"],
+            .dice-overlays .player-dice-section[player-id="P2"] {
+                bottom: 0;
+            }
+            .dice-overlays .player-dice-section[player-id="P3"],
+            .dice-overlays .player-dice-section[player-id="P4"],
+            .dice-overlays .player-dice-section[player-id="P1"],
+            .dice-overlays .player-dice-section[player-id="P2"] {
+                width: clamp(120px, 38vw, 160px);
+                height: clamp(70px, 18vw, 90px);
+            }
+            .game-status {
+                font-size: 16px;
+                margin-top: 6px;
+            }
         }

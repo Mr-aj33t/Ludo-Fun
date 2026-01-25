@@ -1,6 +1,5 @@
-const CACHE_NAME = 'ludo-dice-v1';
+const CACHE_NAME = 'ludo-dice-v2';
 const DICE_URLS = [
-    './ludo/assets/dice/0.png',
     './ludo/assets/dice/1.png',
     './ludo/assets/dice/2.png',
     './ludo/assets/dice/3.png',

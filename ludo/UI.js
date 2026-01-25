@@ -363,16 +363,88 @@ export class UI {
         });
     }
 
-    static setTurn(player) {
-        // Display player name instead of player ID
+    static getPlayerName(player) {
         const playerNames = {
-            'P1': 'Blue',
-            'P2': 'Red',
-            'P3': 'Green',
-            'P4': 'Yellow'
+            P1: 'Blue',
+            P2: 'Red',
+            P3: 'Green',
+            P4: 'Yellow'
         };
 
-        const playerName = playerNames[player] || player;
+        return playerNames[player] || player;
+    }
+
+    static ensureFinishBadge(playerId) {
+        const section = this.getDiceSection(playerId);
+        if (!section) return null;
+
+        let el = section.querySelector('.finish-badge');
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'finish-badge';
+            section.appendChild(el);
+        }
+        return el;
+    }
+
+    static markPlayerFinished(playerId, isWinner = false) {
+        const section = this.getDiceSection(playerId);
+        if (!section) return;
+
+        section.classList.add('finished');
+        if (isWinner) section.classList.add('winner');
+
+        const badge = this.ensureFinishBadge(playerId);
+        if (!badge) return;
+
+        badge.textContent = isWinner ? 'WINNER' : 'FINISHED';
+        badge.setAttribute('data-type', isWinner ? 'winner' : 'finished');
+    }
+
+    static clearFinishBadges() {
+        document.querySelectorAll('.player-dice-section').forEach(section => {
+            section.classList.remove('finished');
+            section.classList.remove('winner');
+            section.classList.remove('lost');
+        });
+
+        document.querySelectorAll('.finish-badge').forEach(badge => badge.remove());
+
+        this.setGameStatus('');
+    }
+
+    static setGameStatus(text) {
+        const el = document.querySelector('.game-status');
+        if (!el) return;
+        el.innerText = text || '';
+    }
+
+    static markPlayerLost(playerId) {
+        const section = this.getDiceSection(playerId);
+        if (!section) return;
+
+        section.classList.add('lost');
+        const badge = this.ensureFinishBadge(playerId);
+        if (!badge) return;
+
+        badge.textContent = 'LOSE';
+        badge.setAttribute('data-type', 'lose');
+    }
+
+    static setWinner(playerId) {
+        const label = document.querySelector('.active-player span');
+        if (!label) return;
+        label.innerText = `${this.getPlayerName(playerId)} (Winner)`;
+    }
+
+    static setGameOver(winnerId) {
+        const label = document.querySelector('.active-player span');
+        if (!label) return;
+        label.innerText = `${this.getPlayerName(winnerId)} (Winner)`;
+    }
+
+    static setTurn(player) {
+        const playerName = this.getPlayerName(player);
         document.querySelector('.active-player span').innerText = playerName;
 
         // Highlight current player's base
