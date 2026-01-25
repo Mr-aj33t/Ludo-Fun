@@ -1230,11 +1230,16 @@
         
         @media (max-width: 760px) {
             .ludo-container {
+                --board-size: max(240px, min(94vmin, calc(100dvh - 220px), 420px));
                 width: var(--board-size);
                 transform: translateY(0);
             }
             .footer {
                 width: var(--board-size);
+            }
+            .game-status {
+                font-size: 16px;
+                margin-top: 6px;
             }
         }
         
@@ -1380,34 +1385,4 @@
         
         .arrow-btn.backward:hover {
             background: rgba(150, 0, 0, 1);
-        }
-        
-        @media (max-width: 760px) {
-            body {
-                align-items: flex-start;
-                overflow-y: auto;
-            }
-            .ludo-container {
-                --board-size: max(240px, min(94vmin, calc(100dvh - 220px), 420px));
-                transform: translateY(0);
-            }
-            .dice-overlays .player-dice-section[player-id="P3"],
-            .dice-overlays .player-dice-section[player-id="P4"] {
-                top: 0;
-            }
-            .dice-overlays .player-dice-section[player-id="P1"],
-            .dice-overlays .player-dice-section[player-id="P2"] {
-                bottom: 0;
-            }
-            .dice-overlays .player-dice-section[player-id="P3"],
-            .dice-overlays .player-dice-section[player-id="P4"],
-            .dice-overlays .player-dice-section[player-id="P1"],
-            .dice-overlays .player-dice-section[player-id="P2"] {
-                width: clamp(120px, 38vw, 160px);
-                height: clamp(70px, 18vw, 90px);
-            }
-            .game-status {
-                font-size: 16px;
-                margin-top: 6px;
-            }
         }
